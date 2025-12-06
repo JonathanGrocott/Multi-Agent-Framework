@@ -1,0 +1,186 @@
+# Multi-Agent System Configuration - Phase 2 Example
+# Spar Lamination Machine - Equipment Engineer with RAG and All MCP Integrations
+
+# List of specialized agents
+agents:
+  # RAG Research Agent - FIRST in workflow
+  - agent_id: "doc_researcher"
+    name: "Document Research Agent"
+    machine_id: "spar_lamination_machine"
+    function: "research"
+    capabilities:
+      - "search_documents"
+      - "extract_technical_context"
+    mcp_tools:
+      - server: "chromadb"
+        tools:
+          - "query_documents"
+    model: "gpt-4"
+    custom_instructions: "Search technical documentation and troubleshooting guides to provide context for the user query."
+
+  # Data Fetching Agent for Spar Lamination Machine
+  - agent_id: "spar_lam_data_fetcher"
+    name: "Spar Lamination Data Fetcher"
+    machine_id: "spar_lamination_machine"
+    function: "data_fetching"
+    capabilities:
+      - "fetch_current_status"
+      - "retrieve_sensor_data"
+      - "query_error_logs"
+    mcp_tools:
+      - server: "highbyte"
+        tools:
+          - "get_robot_status"
+          - "get_process_data"
+          - "get_machine_metrics"
+      - server: "sql_local"
+        tools:
+          - "query_spar_lam_logs"
+          - "get_error_history"
+      - server: "sql_network"
+        tools:
+          - "get_maintenance_records"
+    model: "gpt-4"
+    custom_instructions: "Fetch comprehensive real-time and historical data about the spar lamination machine. Use RAG context if available."
+
+  # Analysis Agent for Spar Lamination Machine
+  - agent_id: "spar_lam_analyzer"
+    name: "Spar Lamination Analyzer"
+    machine_id: "spar_lamination_machine"
+    function: "analysis"
+    capabilities:
+      - "analyze_performance"
+      - "identify_anomalies"
+      - "predict_failures"
+      - "compare_historical_trends"
+    mcp_tools:
+      - server: "teradata"
+        tools:
+          - "teradata_spar_lamination_get_stats"
+          - "teradata_production_trends"
+          - "teradata_quality_metrics"
+    model: "gpt-4"
+    custom_instructions: "Analyze data to identify patterns, anomalies, and potential issues. Compare current state with historical baselines."
+
+  # Summary Agent for Spar Lamination Machine
+  - agent_id: "spar_lam_summarizer"
+    name: "Spar Lamination Summarizer"
+    machine_id: "spar_lamination_machine"
+    function: "summary"
+    capabilities:
+      - "create_reports"
+      - "generate_recommendations"
+      - "format_results"
+    mcp_tools: []  # Summary agent doesn't need direct tool access
+    model: "gpt-4"
+    custom_instructions: "Create clear, actionable summaries for equipment engineers. Prioritize safety issues and include specific recommendations."
+
+# Routing examples for keyword-based routing
+routing_examples:
+  - keywords:
+      - "spar lamination"
+      - "spar lam"
+      - "lamination machine"
+    machine_id: "spar_lamination_machine"
+    description: "Route queries about spar lamination machine"
+
+  - keywords:
+      - "status"
+      - "current state"
+      - "running"
+      - "performance"
+    machine_id: "spar_lamination_machine"
+    description: "Status queries"
+
+  - keywords:
+      - "errors"
+      - "failures"
+      - "problems"
+      - "downtime"
+      - "troubleshoot"
+    machine_id: "spar_lamination_machine"
+    description: "Error and troubleshooting queries"
+
+# MCP Server connection configurations
+mcp_servers:
+  # HighByte - Local with streamable-http
+  highbyte:
+    type: "highbyte"
+    transport: "streamable-http"
+    endpoint: "http://localhost:4567/mcp"
+    auth:
+      type: "bearer"
+      token: "your-highbyte-token-here"  # TODO: Replace with actual token
+    connection_timeout: 30
+  
+  # SQL Server - Local SQL Express
+  sql_local:
+    type: "sql"
+    connection_string: "mssql://localhost/ManufacturingDB"
+    driver: "pyodbc"
+    tools:
+      - name: "query_spar_lam_logs"
+        query: "SELECT TOP 100 * FROM spar_lamination_logs WHERE timestamp > @start_time ORDER BY timestamp DESC"
+        description: "Get recent logs for spar lamination machine"
+      - name: "get_error_history"
+        query: "SELECT * FROM error_logs WHERE machine_id = 'spar_lam' AND timestamp > @start_time"
+        description: "Get error history"
+  
+  # SQL Server - Network production database
+  sql_network:
+    type: "sql"
+    connection_string: "mssql://production-server/ProductionDB"
+    driver: "pyodbc"
+    tools:
+      - name: "get_maintenance_records"
+        query: "SELECT * FROM maintenance_records WHERE machine_id = @machine_id ORDER BY maintenance_date DESC"
+        description: "Get maintenance history"
+  
+  # Teradata - Analytics database
+  teradata:
+    type: "teradata"
+    connection_string: "teradata://teradata-host/analytics_db"
+    tools:
+      - name: "teradata_spar_lamination_get_stats"
+        description: "Get production statistics for spar lamination"
+      - name: "teradata_production_trends"
+        description: "Get 30-day production trends"
+      - name: "teradata_quality_metrics"
+        description: "Get quality metrics and defect rates"
+  
+  # ChromaDB - Local RAG vector database
+  chromadb:
+    type: "chromadb"
+    persist_directory: "./chroma_data"
+    embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
+    tools:
+      - name: "query_documents"
+        description: "Search technical documentation and guides"
+
+# RAG Configuration
+rag_config:
+  chromadb:
+    persist_directory: "./chroma_data"
+    collections:
+      - name: "spar_lamination_docs"
+        description: "Technical documentation for spar lamination machine"
+        metadata_fields: ["doc_type", "version", "last_updated"]
+      - name: "troubleshooting_guides"
+        description: "Troubleshooting and maintenance guides"
+        metadata_fields: ["issue_type", "severity"]
+      - name: "user_notes"
+        description: "User-added notes and observations"
+        metadata_fields: ["author", "date"]
+    search_params:
+      top_k: 5
+      similarity_threshold: 0.7
+
+# History tracking configuration
+history:
+  enabled: true
+  database_path: "./workflow_history.db"
+  retention_days: 90
+  log_level: "INFO"  # DEBUG for full agent outputs
+
+# Default model for agents
+model: "gpt-4"

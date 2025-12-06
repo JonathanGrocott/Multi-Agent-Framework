@@ -4,6 +4,7 @@ from .context import SharedContext
 from .events import Event, EventBus, EventType
 from .agent import Agent
 from .coordinator import Coordinator
+from .history import HistoryService
 
 __all__ = [
     "SharedContext",
@@ -12,4 +13,5 @@ __all__ = [
     "EventType",
     "Agent",
     "Coordinator",
+    "HistoryService",
 ]

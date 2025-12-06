@@ -1,19 +1,33 @@
-"""MCP client wrapper for tool integration."""
+"""Enhanced MCP client wrapper with support for multiple server types."""
 
 from typing import Any, Dict, List, Optional
-import json
+from .servers import (
+    BaseMCPServer,
+    HighByteMCPServer,
+    SQLServerMCPServer,
+    TeradataMCPServer,
+    ChromaDBMCPServer
+)
 
 
 class MCPClient:
     """
-    Wrapper for MCP (Model Context Protocol) client.
+    Enhanced MCP client supporting multiple server types.
     
-    Manages connections to multiple MCP servers (HighByte, SQL, Teradata)
-    and provides a unified interface for tool invocation.
-    
-    Phase 1: Mock implementation for testing
-    Phase 2: Integrate with actual MCP SDK
+    Manages connections to:
+    - HighByte (streamable-http with bearer token)
+    - SQL Server (local + network)
+    - Teradata (pre-defined queries)
+    - ChromaDB (RAG/vector search)
     """
+    
+    # Server type to class mapping
+    SERVER_TYPES = {
+        "highbyte": HighByteMCPServer,
+        "sql": SQLServerMCPServer,
+        "teradata": TeradataMCPServer,
+        "chromadb": ChromaDBMCPServer,
+    }
     
     def __init__(self, servers: Optional[Dict[str, Dict[str, Any]]] = None):
         """
@@ -24,55 +38,73 @@ class MCPClient:
                 {
                     "highbyte": {
                         "type": "highbyte",
-                        "connection": {...}
+                        "endpoint": "http://localhost:4567/mcp",
+                        "auth": {"type": "bearer", "token": "..."}
                     },
-                    "sql": {
+                    "sql_local": {
                         "type": "sql",
-                        "connection": {...}
+                        "connection_string": "...",
+                        "tools": [...]
                     }
                 }
         """
-        self.servers = servers or {}
-        self._connections: Dict[str, Any] = {}
-        self._available_tools: Dict[str, List[str]] = {}  # server -> [tool_names]
+        self.server_configs = servers or {}
+        self._servers: Dict[str, BaseMCPServer] = {}
+        self._tool_to_server: Dict[str, str] = {}  # tool_name -> server_name
         
     def connect(self, server_name: str, config: Dict[str, Any]) -> None:
         """
         Connect to an MCP server.
         
         Args:
-            server_name: Identifier for this server
-            config: Server configuration
+            server_name: Unique identifier for this server instance
+            config: Server configuration including "type" field
         """
-        # TODO: Implement actual MCP connection
-        # For now, store config
-        self.servers[server_name] = config
-        self._connections[server_name] = f"MockConnection({server_name})"
+        server_type = config.get("type")
+        if not server_type:
+            raise ValueError(f"Server config must include 'type' field: {server_name}")
         
-        # Mock: Populate some example tools
-        if server_name == "highbyte":
-            self._available_tools[server_name] = [
-                "get_robot_status",
-                "get_process_data",
-                "get_machine_metrics"
-            ]
-        elif server_name == "sql":
-            self._available_tools[server_name] = [
-                "query_logs",
-                "get_error_history",
-                "get_maintenance_records"
-            ]
-        elif server_name == "teradata":
-            self._available_tools[server_name] = [
-                "query_analytics",
-                "get_production_stats"
-            ]
+        if server_type not in self.SERVER_TYPES:
+            raise ValueError(
+                f"Unknown server type '{server_type}'. "
+                f"Supported: {list(self.SERVER_TYPES.keys())}"
+            )
+        
+        # Create server instance
+        server_class = self.SERVER_TYPES[server_type]
+        server = server_class(server_name, config)
+        
+        # Connect
+        server.connect()
+        
+        # Store server
+        self._servers[server_name] = server
+        
+        # Map tools to this server
+        for tool_name in server.list_tools():
+            self._tool_to_server[tool_name] = server_name
     
     def disconnect(self, server_name: str) -> None:
         """Disconnect from an MCP server."""
-        if server_name in self._connections:
-            # TODO: Implement actual disconnection
-            del self._connections[server_name]
+        if server_name in self._servers:
+            server = self._servers[server_name]
+            
+            # Remove tool mappings
+            tools_to_remove = [
+                tool for tool, srv in self._tool_to_server.items()
+                if srv == server_name
+            ]
+            for tool in tools_to_remove:
+                del self._tool_to_server[tool]
+            
+            # Disconnect and remove server
+            server.disconnect()
+            del self._servers[server_name]
+    
+    def disconnect_all(self) -> None:
+        """Disconnect from all servers."""
+        for server_name in list(self._servers.keys()):
+            self.disconnect(server_name)
     
     def call_tool(self, tool_name: str, parameters: Dict[str, Any]) -> Any:
         """
@@ -87,41 +119,20 @@ class MCPClient:
             
         Raises:
             ValueError: If tool is not found
+            RuntimeError: If tool execution fails
         """
         # Find which server has this tool
-        server_name = self._find_server_for_tool(tool_name)
+        server_name = self._tool_to_server.get(tool_name)
         
         if not server_name:
-            available = []
-            for tools in self._available_tools.values():
-                available.extend(tools)
+            available = list(self._tool_to_server.keys())
             raise ValueError(
-                f"Tool '{tool_name}' not found. Available tools: {available}"
+                f"Tool '{tool_name}' not found. "
+                f"Available tools: {available[:10]}{'...' if len(available) > 10 else ''}"
             )
         
-        # TODO: Implement actual tool invocation via MCP SDK
-        # For now, return mock result
-        return self._mock_tool_result(tool_name, parameters)
-    
-    def _find_server_for_tool(self, tool_name: str) -> Optional[str]:
-        """Find which server provides a specific tool."""
-        for server_name, tools in self._available_tools.items():
-            if tool_name in tools:
-                return server_name
-        return None
-    
-    def _mock_tool_result(self, tool_name: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
-        """Generate mock tool result for testing."""
-        return {
-            "tool": tool_name,
-            "parameters": parameters,
-            "result": {
-                "status": "success",
-                "data": f"Mock data from {tool_name}",
-                "timestamp": "2025-12-06T10:00:00Z"
-            },
-            "mock": True
-        }
+        server = self._servers[server_name]
+        return server.call_tool(tool_name, parameters)
     
     def list_available_tools(self, server_name: Optional[str] = None) -> List[str]:
         """
@@ -134,13 +145,29 @@ class MCPClient:
             List of available tool names
         """
         if server_name:
-            return self._available_tools.get(server_name, [])
+            if server_name in self._servers:
+                return self._servers[server_name].list_tools()
+            return []
         
         # Return all tools from all servers
-        all_tools = []
-        for tools in self._available_tools.values():
-            all_tools.extend(tools)
-        return all_tools
+        return list(self._tool_to_server.keys())
+    
+    def list_servers(self) -> List[str]:
+        """Get list of connected server names."""
+        return list(self._servers.keys())
+    
+    def get_server(self, server_name: str) -> Optional[BaseMCPServer]:
+        """Get a specific server instance (for advanced usage)."""
+        return self._servers.get(server_name)
+    
+    def get_server_for_tool(self, tool_name: str) -> Optional[str]:
+        """Get the server name that provides a specific tool."""
+        return self._tool_to_server.get(tool_name)
+    
+    def is_connected(self, server_name: str) -> bool:
+        """Check if a specific server is connected."""
+        server = self._servers.get(server_name)
+        return server.is_connected() if server else False
     
     def get_tool_schema(self, tool_name: str) -> Optional[Dict[str, Any]]:
         """
@@ -152,13 +179,22 @@ class MCPClient:
         Returns:
             Tool schema or None if not found
         """
-        # TODO: Implement actual schema retrieval from MCP
+        # TODO: Enhance server interfaces to provide schemas
         return {
             "name": tool_name,
-            "description": f"Mock description for {tool_name}",
-            "parameters": {}
+            "description": f"Tool: {tool_name}",
+            "server": self._tool_to_server.get(tool_name)
         }
     
     def __repr__(self) -> str:
-        total_tools = sum(len(tools) for tools in self._available_tools.values())
-        return f"MCPClient(servers={len(self.servers)}, tools={total_tools})"
+        total_tools = len(self._tool_to_server)
+        return (
+            f"MCPClient(servers={len(self._servers)}, "
+            f"tools={total_tools}, "
+            f"connected={sum(1 for s in self._servers.values() if s.is_connected())})"
+        )
+    
+    def __del__(self):
+        """Cleanup on deletion."""
+        self.disconnect_all()
+

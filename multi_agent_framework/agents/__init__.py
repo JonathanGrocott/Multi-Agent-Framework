@@ -2,5 +2,6 @@
 
 from .specialized_agent import SpecializedAgent
 from .registry import AgentRegistry
+from .rag_agent import RAGAgent
 
-__all__ = ["SpecializedAgent", "AgentRegistry"]
+__all__ = ["SpecializedAgent", "AgentRegistry", "RAGAgent"]

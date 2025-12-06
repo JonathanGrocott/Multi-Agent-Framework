@@ -1,24 +1,57 @@
-# Multi-Agent Orchestration Framework
-# Python dependencies
+# Multi-Agent Orchestration Framework - Phase 2 Dependencies
 
-# Core dependencies
+# Core dependencies (Phase 1)
 pydantic>=2.0.0
 pyyaml>=6.0
 
-# MCP SDK (Model Context Protocol)
-# Note: Replace with actual MCP package when available
-# mcp>=1.0.0
+# === Phase 2 MCP Server Integration ===
 
-# Optional: LLM clients (choose based on your needs)
+# MCP SDK
+# mcp>=1.0.0  # Install actual MCP SDK when available
+
+# HighByte MCP (streamable-http)
+httpx>=0.24.0  # For HTTP requests with bearer token
+aiohttp>=3.8.0  # Async HTTP client
+
+# Teradata MCP Server
+# Install from: https://github.com/Teradata/teradata-mcp-server
+# Follow their installation instructions
+
+# SQL Server Integration
+pyodbc>=4.0.39  # SQL Server driver
+sqlalchemy>=2.0.0  # SQL toolkit and ORM
+
+# === Phase 2 RAG Integration ===
+
+# ChromaDB for vector storage
+chromadb>=0.4.0
+sentence-transformers>=2.2.0  # For embeddings
+
+# Document processing
+langchain>=0.1.0  # Optional: for document loaders
+pypdf>=3.0.0  # PDF parsing
+python-docx>=0.8.11  # Word document parsing
+
+# === Phase 2 History Tracking ===
+
+# SQLite (built-in to Python)
+# No additional package needed
+
+# === Phase 3 LLM Integration ===
+
+# OpenAI
 # openai>=1.0.0
+
+# Anthropic
 # anthropic>=0.8.0
 
-# Development dependencies
+# === Development dependencies ===
 pytest>=7.0.0
 pytest-asyncio>=0.21.0
 black>=23.0.0
 mypy>=1.0.0
 
-# Optional: Vector DB for advanced routing (Phase 2)
-# chromadb>=0.4.0
-# sentence-transformers>=2.2.0
+# === Optional: Advanced features ===
+# redis>=5.0.0  # For caching layer
+# fastapi>=0.100.0  # For API/monitoring dashboard
+# uvicorn>=0.23.0  # ASGI server
