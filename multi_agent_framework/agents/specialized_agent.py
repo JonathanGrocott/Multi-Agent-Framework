@@ -28,6 +28,7 @@ class SpecializedAgent(Agent):
         context: SharedContext,
         event_bus: EventBus,
         mcp_client: Optional[Any] = None,
+        llm_provider: Optional[Any] = None,
         model: str = "gpt-4",
         custom_instructions: Optional[str] = None
     ):
@@ -44,6 +45,7 @@ class SpecializedAgent(Agent):
             context: Shared context
             event_bus: Event bus
             mcp_client: MCP client
+            llm_provider: LLM provider for task execution
             model: LLM model
             custom_instructions: Additional instructions for the agent
         """
@@ -65,6 +67,7 @@ class SpecializedAgent(Agent):
             context=context,
             event_bus=event_bus,
             mcp_client=mcp_client,
+            llm_provider=llm_provider,
             model=model,
             system_prompt=system_prompt
         )
@@ -156,22 +159,149 @@ class SpecializedAgent(Agent):
         """
         Execute task using LLM with access to MCP tools.
         
-        This is a placeholder for LLM integration. In Phase 2, this will:
-        1. Call LLM with system prompt and instruction
-        2. Allow LLM to invoke MCP tools through function calling
-        3. Process results and return output
+        Implements a function calling loop:
+        1. Call LLM with system prompt, instruction, and context
+        2. If LLM requests tool calls, execute them
+        3. Add tool results to conversation and continue
+        4. Repeat until LLM provides final answer
         
-        For now, returns a simple mock response.
+        Args:
+            instruction: Task instruction
+            parameters: Task parameters
+            context_data: Relevant context data
+            
+        Returns:
+            Final LLM response or structured fallback
         """
-        # TODO: Implement actual LLM integration with tool calling
-        # For now, return structured response
-        return {
-            "message": f"Task executed by {self.name}",
-            "instruction": instruction,
-            "parameters": parameters,
-            "context_available": list(context_data.keys()),
-            "tools_available": list(self.allowed_tools)
-        }
+        # If no LLM provider, return mock response
+        if not self.llm_provider:
+            return {
+                "message": f"Task executed by {self.name} (no LLM provider configured)",
+                "instruction": instruction,
+                "parameters": parameters,
+                "context_available": list(context_data.keys()),
+                "tools_available": list(self.allowed_tools)
+            }
+        
+        try:
+            from ..core.llm_provider import LLMMessage, ToolDefinition, MessageRole
+            
+            # Build conversation messages
+            messages = []
+            
+            # System message with specialized prompt
+            messages.append(LLMMessage(
+                role=MessageRole.SYSTEM,
+                content=self.system_prompt
+            ))
+            
+            # Build user message with instruction, parameters, and context
+            user_content_parts = [f"Task: {instruction}"]
+            
+            if parameters:
+                user_content_parts.append(f"\nParameters: {parameters}")
+            
+            if context_data:
+                user_content_parts.append(f"\nContext data available: {list(context_data.keys())}")
+                # Add summaries of context data
+                for key, value in context_data.items():
+                    summary = self.context.get_summary(key)
+                    if summary:
+                        user_content_parts.append(f"  - {key}: {summary}")
+            
+            messages.append(LLMMessage(
+                role=MessageRole.USER,
+                content="\n".join(user_content_parts)
+            ))
+            
+            # Get tool definitions for MCP tools
+            tools = self._get_tool_definitions()
+            
+            # Function calling loop with max iterations to prevent infinite loops
+            max_iterations = 10
+            iteration = 0
+            
+            while iteration < max_iterations:
+                iteration += 1
+                
+                # Call LLM
+                response = self.llm_provider.complete(
+                    messages=messages,
+                    model=self.model,
+                    tools=tools if tools else None,
+                    temperature=0.7
+                )
+                
+                # If no tool calls, we have the final answer
+                if not response.tool_calls:
+                    return response.content or "Task completed successfully."
+                
+                # Add assistant message with tool calls
+                messages.append(LLMMessage(
+                    role=MessageRole.ASSISTANT,
+                    content=response.content,
+                    tool_calls=response.tool_calls
+                ))
+                
+                # Execute each tool call and add results
+                for tool_call in response.tool_calls:
+                    try:
+                        # Invoke the tool
+                        tool_result = self.invoke_tool(tool_call.name, tool_call.arguments)
+                        
+                        # Add tool result message
+                        messages.append(LLMMessage(
+                            role=MessageRole.TOOL,
+                            content=str(tool_result),
+                            tool_call_id=tool_call.id,
+                            name=tool_call.name
+                        ))
+                    except Exception as e:
+                        # Add error message as tool result
+                        messages.append(LLMMessage(
+                            role=MessageRole.TOOL,
+                            content=f"Error executing tool: {str(e)}",
+                            tool_call_id=tool_call.id,
+                            name=tool_call.name
+                        ))
+            
+            # If we hit max iterations, return what we have
+            return "Task execution reached maximum iterations. Please review the results."
+            
+        except Exception as e:
+            # If LLM execution fails, return error details
+            raise Exception(f"LLM execution failed: {str(e)}") from e
+    
+    def _get_tool_definitions(self) -> List:
+        """
+        Get tool definitions for allowed MCP tools.
+        
+        Returns:
+            List of ToolDefinition objects
+        """
+        from ..core.llm_provider import ToolDefinition
+        
+        if not self.mcp_client or not self.allowed_tools:
+            return []
+        
+        tool_defs = []
+        available_tools = self.mcp_client.list_available_tools()
+        
+        for tool_name in self.allowed_tools:
+            # Get tool info from MCP client
+            tool_info = self.mcp_client.get_tool_info(tool_name)
+            if tool_info:
+                tool_defs.append(ToolDefinition(
+                    name=tool_name,
+                    description=tool_info.get("description", f"Execute {tool_name}"),
+                    parameters=tool_info.get("parameters", {
+                        "type": "object",
+                        "properties": {},
+                        "required": []
+                    })
+                ))
+        
+        return tool_defs
     
     def invoke_tool(self, tool_name: str, parameters: Dict[str, Any]) -> Any:
         """

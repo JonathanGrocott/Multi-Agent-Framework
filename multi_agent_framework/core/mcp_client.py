@@ -169,21 +169,37 @@ class MCPClient:
         server = self._servers.get(server_name)
         return server.is_connected() if server else False
     
-    def get_tool_schema(self, tool_name: str) -> Optional[Dict[str, Any]]:
+    def get_tool_info(self, tool_name: str) -> Optional[Dict[str, Any]]:
         """
-        Get schema/description for a tool.
+        Get information about a specific tool for LLM function calling.
         
         Args:
             tool_name: Tool name
             
         Returns:
-            Tool schema or None if not found
+            Tool info including description and parameters schema, or None if not found
         """
-        # TODO: Enhance server interfaces to provide schemas
+        server_name = self._tool_to_server.get(tool_name)
+        if not server_name:
+            return None
+        
+        server = self._servers.get(server_name)
+        if not server:
+            return None
+        
+        # Get tool info from server if available
+        if hasattr(server, 'get_tool_info'):
+            return server.get_tool_info(tool_name)
+        
+        # Fallback to basic info
         return {
             "name": tool_name,
-            "description": f"Tool: {tool_name}",
-            "server": self._tool_to_server.get(tool_name)
+            "description": f"Execute {tool_name} on {server_name}",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
         }
     
     def __repr__(self) -> str:

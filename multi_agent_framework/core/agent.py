@@ -21,6 +21,7 @@ class Agent(ABC):
         context: SharedContext,
         event_bus: EventBus,
         mcp_client: Optional[Any] = None,
+        llm_provider: Optional[Any] = None,
         model: str = "gpt-4",
         system_prompt: Optional[str] = None
     ):
@@ -33,6 +34,7 @@ class Agent(ABC):
             context: Shared context for inter-agent communication
             event_bus: Event bus for publishing/subscribing to events
             mcp_client: MCP client for tool invocation
+            llm_provider: LLM provider for executing tasks
             model: LLM model to use
             system_prompt: Custom system prompt for this agent
         """
@@ -41,6 +43,7 @@ class Agent(ABC):
         self.context = context
         self.event_bus = event_bus
         self.mcp_client = mcp_client
+        self.llm_provider = llm_provider
         self.model = model
         self.system_prompt = system_prompt or self._default_system_prompt()
         

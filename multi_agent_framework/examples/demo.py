@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from multi_agent_framework.core import SharedContext, EventBus, Coordinator
 from multi_agent_framework.core.mcp_client import MCPClient
+from multi_agent_framework.core.llm_factory import LLMFactory
 from multi_agent_framework.agents import AgentRegistry, SpecializedAgent
 from multi_agent_framework.config import load_config
 
@@ -47,6 +48,23 @@ def setup_system(config_path: str):
         print(f"Connecting to MCP server: {server_name}")
         mcp_client.connect(server_name, server_config)
     
+    # Initialize LLM providers
+    print(f"\nInitializing LLM providers...")
+    llm_providers = {}
+    try:
+        llm_providers = LLMFactory.create_from_config(config)
+        for provider_name in llm_providers.keys():
+            print(f"  ✓ Created LLM provider: {provider_name}")
+    except Exception as e:
+        print(f"  ⚠ Warning: LLM provider initialization failed: {e}")
+        print(f"  Agents will run without LLM capabilities (mock mode)")
+    
+    # Get default provider
+    default_provider = None
+    if config.default_llm_provider and config.default_llm_provider in llm_providers:
+        default_provider = llm_providers[config.default_llm_provider]
+        print(f"  ✓ Default provider: {config.default_llm_provider}")
+    
     # Create and register agents
     print(f"\nRegistering {len(config.agents)} agents...")
     for agent_config in config.agents:
@@ -64,6 +82,7 @@ def setup_system(config_path: str):
             context=context,
             event_bus=event_bus,
             mcp_client=mcp_client,
+            llm_provider=default_provider,  # Pass LLM provider
             model=agent_config.model,
             custom_instructions=agent_config.custom_instructions
         )

@@ -39,8 +39,14 @@ python-docx>=0.8.11  # Word document parsing
 
 # === Phase 3 LLM Integration ===
 
-# OpenAI
-# openai>=1.0.0
+# OpenAI SDK (supports both standard and custom endpoints)
+openai>=1.0.0
+
+# Environment variable management
+python-dotenv>=1.0.0
+
+# Token counting and optimization
+tiktoken>=0.5.0
 
 # Anthropic
 # anthropic>=0.8.0

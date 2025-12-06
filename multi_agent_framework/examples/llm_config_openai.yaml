@@ -1,0 +1,88 @@
+# Multi-Agent System Configuration - OpenAI Standard API
+# Example configuration using standard OpenAI API
+
+# LLM Provider Configuration
+llm_providers:
+  openai_standard:
+    type: "openai"
+    api_key: "${OPENAI_API_KEY}"  # References .env file
+    default_model: "gpt-4o-mini"
+    timeout: 60
+    max_retries: 3
+
+# Default provider to use
+default_llm_provider: "openai_standard"
+
+# List of specialized agents
+agents:
+  # Data Fetching Agent for Spar Lamination Machine
+  - agent_id: "spar_lam_data_fetcher"
+    name: "Spar Lamination Data Fetcher"
+    machine_id: "spar_lamination_machine"
+    function: "data_fetching"
+    capabilities:
+      - "fetch_current_status"
+      - "retrieve_sensor_data"
+      - "query_error_logs"
+    mcp_tools:
+      - server: "highbyte"
+        tools:
+          - "get_robot_status"
+          - "get_process_data"
+    model: "gpt-4o-mini"
+    custom_instructions: "Fetch comprehensive real-time and historical data about the spar lamination machine."
+
+  # Analysis Agent for Spar Lamination Machine
+  - agent_id: "spar_lam_analyzer"
+    name: "Spar Lamination Analyzer"
+    machine_id: "spar_lamination_machine"
+    function: "analysis"
+    capabilities:
+      - "analyze_performance"
+      - "identify_anomalies"
+      - "predict_failures"
+    mcp_tools: []
+    model: "gpt-4"  # Use more powerful model for analysis
+    custom_instructions: "Analyze data to identify patterns, anomalies, and potential issues."
+
+  # Summary Agent
+  - agent_id: "spar_lam_summarizer"
+    name: "Spar Lamination Summarizer"
+    machine_id: "spar_lamination_machine"
+    function: "summary"
+    capabilities:
+      - "create_reports"
+      - "generate_recommendations"
+    mcp_tools: []
+    model: "gpt-4o-mini"
+    custom_instructions: "Create clear, actionable summaries for equipment engineers."
+
+# Routing examples
+routing_examples:
+  - keywords:
+      - "spar lamination"
+      - "spar lam"
+    machine_id: "spar_lamination_machine"
+    description: "Route queries about spar lamination machine"
+
+  - keywords:
+      - "status"
+      - "current state"
+    machine_id: "spar_lamination_machine"
+    description: "Status queries"
+
+# MCP Server configurations
+mcp_servers:
+  highbyte:
+    type: "highbyte"
+    transport: "streamable-http"
+    endpoint: "http://localhost:4567/mcp"
+    auth:
+      type: "bearer"
+      token: "${HIGHBYTE_API_TOKEN}"
+
+# History tracking
+history:
+  enabled: true
+  database_path: "./workflow_history.db"
+  retention_days: 90

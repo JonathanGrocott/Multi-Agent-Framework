@@ -1,7 +1,7 @@
 """Configuration schema for agents using Pydantic."""
 
 from typing import List, Dict, Any, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class MCPToolConfig(BaseModel):
@@ -37,13 +37,24 @@ class RoutingExample(BaseModel):
     description: str = Field(default="", description="Description of this routing rule")
 
 
+class LLMProviderConfig(BaseModel):
+    """Configuration for an LLM provider."""
+    type: str = Field(..., description="Provider type (e.g., 'openai', 'azure')")
+    api_key: str = Field(..., description="API key or ${ENV_VAR} reference")
+    base_url: Optional[str] = Field(None, description="Optional custom base URL for API endpoint")
+    organization: Optional[str] = Field(None, description="Optional organization ID")
+    default_model: str = Field(default="gpt-4o-mini", description="Default model to use")
+    timeout: int = Field(default=60, description="Request timeout in seconds")
+    max_retries: int = Field(default=3, description="Maximum retry attempts")
+
+
 class SystemConfig(BaseModel):
     """Overall system configuration."""
     agents: List[AgentConfig] = Field(default_factory=list, description="Agent configurations")
     routing_examples: List[RoutingExample] = Field(default_factory=list, description="Routing examples")
     mcp_servers: Dict[str, Dict[str, Any]] = Field(default_factory=dict, description="MCP server connections")
-    model: str = Field(default="gpt-4", description="Default LLM model")
+    llm_providers: Dict[str, LLMProviderConfig] = Field(default_factory=dict, description="LLM provider configurations")
+    default_llm_provider: Optional[str] = Field(None, description="Default LLM provider to use")
+    model: str = Field(default="gpt-4", description="Default LLM model (deprecated, use llm_providers)")
     
-    class Config:
-        """Pydantic config."""
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
