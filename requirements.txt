@@ -1,0 +1,24 @@
+# Multi-Agent Orchestration Framework
+# Python dependencies
+
+# Core dependencies
+pydantic>=2.0.0
+pyyaml>=6.0
+
+# MCP SDK (Model Context Protocol)
+# Note: Replace with actual MCP package when available
+# mcp>=1.0.0
+
+# Optional: LLM clients (choose based on your needs)
+# openai>=1.0.0
+# anthropic>=0.8.0
+
+# Development dependencies
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+black>=23.0.0
+mypy>=1.0.0
+
+# Optional: Vector DB for advanced routing (Phase 2)
+# chromadb>=0.4.0
+# sentence-transformers>=2.2.0

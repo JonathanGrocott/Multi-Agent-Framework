@@ -1,0 +1,117 @@
+# Multi-Agent System Configuration Example
+# Spar Lamination Machine - Equipment Engineer Persona
+
+# List of specialized agents
+agents:
+  # Data Fetching Agent for Spar Lamination Machine
+  - agent_id: "spar_lam_data_fetcher"
+    name: "Spar Lamination Data Fetcher"
+    machine_id: "spar_lamination_machine"
+    function: "data_fetching"
+    capabilities:
+      - "fetch_current_status"
+      - "retrieve_sensor_data"
+      - "query_error_logs"
+    mcp_tools:
+      - server: "highbyte"
+        connection:
+          endpoint: "http://highbyte-server:8080"
+          machine: "spar_lamination_machine"
+        tools:
+          - "get_robot_status"
+          - "get_process_data"
+          - "get_machine_metrics"
+      - server: "sql"
+        connection:
+          database: "manufacturing_db"
+          table: "spar_lamination_logs"
+        tools:
+          - "query_logs"
+          - "get_error_history"
+    model: "gpt-4"
+    custom_instructions: "Focus on retrieving comprehensive data about the spar lamination machine's current state and recent history. Prioritize error logs and anomalies."
+
+  # Analysis Agent for Spar Lamination Machine
+  - agent_id: "spar_lam_analyzer"
+    name: "Spar Lamination Analyzer"
+    machine_id: "spar_lamination_machine"
+    function: "analysis"
+    capabilities:
+      - "analyze_performance"
+      - "identify_anomalies"
+      - "predict_failures"
+    mcp_tools:
+      - server: "teradata"
+        connection:
+          database: "analytics_db"
+        tools:
+          - "query_analytics"
+          - "get_production_stats"
+      - server: "sql"
+        connection:
+          database: "manufacturing_db"
+        tools:
+          - "get_maintenance_records"
+    model: "gpt-4"
+    custom_instructions: "Analyze the fetched data to identify patterns, anomalies, and potential issues. Provide insights on machine performance and recommendations for equipment engineers."
+
+  # Summary Agent for Spar Lamination Machine
+  - agent_id: "spar_lam_summarizer"
+    name: "Spar Lamination Summarizer"
+    machine_id: "spar_lamination_machine"
+    function: "summary"
+    capabilities:
+      - "create_reports"
+      - "generate_recommendations"
+      - "format_results"
+    mcp_tools: []  # Summary agent typically doesn't need direct tool access
+    model: "gpt-4"
+    custom_instructions: "Create clear, concise summaries tailored for equipment engineers. Include actionable recommendations and highlight critical information."
+
+# Routing examples for keyword-based routing
+routing_examples:
+  - keywords:
+      - "spar lamination"
+      - "spar lam"
+      - "lamination machine"
+      - "spar machine"
+    machine_id: "spar_lamination_machine"
+    description: "Route queries about spar lamination machine"
+
+  - keywords:
+      - "status"
+      - "current state"
+      - "what's happening"
+      - "performance"
+    machine_id: "spar_lamination_machine"
+    description: "Status queries for spar lamination machine"
+
+  - keywords:
+      - "errors"
+      - "failures"
+      - "problems"
+      - "issues"
+      - "downtime"
+    machine_id: "spar_lamination_machine"
+    description: "Error and issue queries"
+
+# MCP Server connection configurations
+mcp_servers:
+  highbyte:
+    type: "highbyte"
+    endpoint: "http://highbyte-server:8080"
+    auth:
+      type: "api_key"
+      key_env: "HIGHBYTE_API_KEY"
+  
+  sql:
+    type: "sql"
+    connection_string_env: "SQL_CONNECTION_STRING"
+    driver: "postgresql"
+  
+  teradata:
+    type: "teradata"
+    connection_string_env: "TERADATA_CONNECTION_STRING"
+
+# Default model for agents
+model: "gpt-4"
