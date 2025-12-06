@@ -7,6 +7,7 @@ multi_agent_framework.egg-info/dependency_links.txt
 multi_agent_framework.egg-info/requires.txt
 multi_agent_framework.egg-info/top_level.txt
 multi_agent_framework/agents/__init__.py
+multi_agent_framework/agents/rag_agent.py
 multi_agent_framework/agents/registry.py
 multi_agent_framework/agents/specialized_agent.py
 multi_agent_framework/config/__init__.py
@@ -17,5 +18,13 @@ multi_agent_framework/core/agent.py
 multi_agent_framework/core/context.py
 multi_agent_framework/core/coordinator.py
 multi_agent_framework/core/events.py
+multi_agent_framework/core/history.py
 multi_agent_framework/core/mcp_client.py
+multi_agent_framework/core/servers/__init__.py
+multi_agent_framework/core/servers/base.py
+multi_agent_framework/core/servers/chromadb_server.py
+multi_agent_framework/core/servers/highbyte.py
+multi_agent_framework/core/servers/sql_server.py
+multi_agent_framework/core/servers/teradata.py
 multi_agent_framework/examples/demo.py
+multi_agent_framework/examples/phase2_demo.py
