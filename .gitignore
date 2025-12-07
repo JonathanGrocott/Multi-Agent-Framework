@@ -61,6 +61,8 @@ chroma_data/
 test_chroma_data/
 *.chroma/
 chromadb/
+chromadb_data/
+tools/chromadb_data/
 
 # Logs
 *.log
@@ -89,3 +91,12 @@ temp/
 # Uncomment if your configs have credentials
 # config/mcp_servers.yaml
 # config/production.yaml
+
+# Node modules (frontend)
+node_modules/
+.cache/
+
+# Build artifacts
+*.egg-info/
+dist/
+build/

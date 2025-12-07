@@ -1,233 +1,216 @@
-# Multi-Agent Orchestration Framework
+# Multi-Agent Manufacturing Framework
 
-A Python framework for orchestrating specialized AI agents in manufacturing environments. Each agent is an expert on a specific industrial machine and performs specialized functions (data fetching, analysis, summary) using MCP (Model Context Protocol) tools.
+An intelligent multi-agent system for manufacturing operations, powered by LLMs and designed for non-technical users.
 
 ## Overview
 
-This framework enables you to build persona-specific multi-agent systems where:
-- **Specialized Agents**: Each agent combines machine expertise + functional expertise (e.g., "Spar Lamination Data Fetcher")
-- **Coordinator Pattern**: Central orchestrator routes tasks to appropriate agents based on user queries
-- **Event-Driven**: Agents communicate through an event bus with minimal token usage
-- **MCP Integration**: Agents use MCP tools to access manufacturing data from HighByte, SQL, Teradata, etc.
+This framework enables natural language interaction with manufacturing equipment through a web-based chat interface. Each machine gets its own AI assistant with access to documentation, databases, and real-time data.
 
-## Architecture
+## Key Features
 
-```
-┌─────────────┐
-│    User     │
-└──────┬──────┘
-       │
-       ▼
-┌─────────────────┐
-│  Coordinator    │ ─────► Routing Config (keywords/LLM)
-└────┬───┬───┬────┘
-     │   │   │
-     ▼   ▼   ▼
-  ┌─────┐ ┌─────┐ ┌─────┐
-  │Agent│ │Agent│ │Agent│
-  │ 1   │ │ 2   │ │ 3   │
-  └─────┘ └─────┘ └─────┘
-     │       │       │
-     └───┬───┴───┬───┘
-         ▼       ▼
-    ┌─────────────────┐
-    │ Shared Context  │
-    │   Event Bus     │
-    │   MCP Client    │
-    └─────────────────┘
-```
+- 🤖 **Multi-Agent Architecture** - Specialized agents for data fetching, analysis, and summarization
+- 🌐 **Web Interface** - Simple chat UI for non-technical users
+- 📚 **RAG Documentation Search** - Agents search machine-specific documentation  
+- 🔧 **Flexible Tool Access** - Each machine configured with its own data sources
+- 🔐 **Machine Isolation** - Complete separation between machine configurations
+- 🚀 **Easy Deployment** - One-command Docker setup
 
 ## Quick Start
 
-### Installation
+### 1. Web Interface (Recommended)
+
+The easiest way to use the system:
 
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd Multi-Agent-Framework
-
-# Install dependencies
+# Start backend
+cd backend
+source ../.venv/bin/activate
 pip install -r requirements.txt
+uvicorn app.main:app --reload
+
+# Start frontend (new terminal)
+cd frontend
+npm install
+npm run dev
 ```
 
-### Configuration
+Visit **http://localhost:5173** and start chatting!
 
-Create a YAML configuration file for your use case (see `multi_agent_framework/examples/spar_lamination_config.yaml`):
+### 2. Add Documentation for Your Machine
+
+```bash
+# Add your machine's documentation
+mkdir -p docs/my_machine
+# Add .txt, .md, or .json files to docs/my_machine/
+
+# Ingest into RAG
+python tools/setup_rag_collection.py \
+  --machine my_machine \
+  --docs ./docs/my_machine/
+```
+
+### 3. Configure Your Machine
+
+Create `backend/configs/my_machine.yaml`:
 
 ```yaml
+llm_providers:
+  openai_standard:
+    type: "openai"
+    api_key: "${OPENAI_API_KEY}"
+    default_model: "gpt-4o-mini"
+
 agents:
-  - agent_id: "machine_a_data_fetcher"
-    name: "Machine A Data Fetcher"
-    machine_id: "machine_a"
+  - agent_id: "my_machine_assistant"
+    name: "My Machine Assistant"
+    machine_id: "my_machine"
     function: "data_fetching"
     capabilities:
-      - "fetch_current_status"
-      - "retrieve_sensor_data"
+      - "search_documentation"
     mcp_tools:
-      - server: "highbyte"
-        tools:
-          - "get_robot_status"
-          - "get_process_data"
-
-routing_examples:
-  - keywords: ["machine a", "robot a"]
-    machine_id: "machine_a"
+      - server: "chromadb"
+        tools: ["search_docs"]
 
 mcp_servers:
-  highbyte:
-    type: "highbyte"
-    endpoint: "http://your-server:8080"
+  chromadb:
+    collection_name: "my_machine_docs"
+    persist_directory: "./chromadb_data"
 ```
 
-### Usage
-
-```python
-from multi_agent_framework.core import SharedContext, EventBus, Coordinator
-from multi_agent_framework.agents import AgentRegistry, SpecializedAgent
-from multi_agent_framework.config import load_config
-
-# Load configuration
-config = load_config("path/to/config.yaml")
-
-# Initialize system
-context = SharedContext()
-event_bus = EventBus()
-registry = AgentRegistry()
-
-# Create coordinator
-coordinator = Coordinator(
-    agent_registry=registry,
-    context=context,
-    event_bus=event_bus
-)
-
-# Execute query
-result = coordinator.execute_workflow(
-    "What's the status of Machine A?"
-)
-
-print(result['final_output'])
-```
-
-### Run Demo
-
-```bash
-cd multi_agent_framework/examples
-python demo.py
-```
-
-## Key Components
-
-### Specialized Agent
-
-Combines machine expertise and functional expertise:
-
-```python
-agent = SpecializedAgent(
-    agent_id="spar_lam_data_fetcher",
-    name="Spar Lamination Data Fetcher",
-    machine_id="spar_lamination_machine",
-    function="data_fetching",
-    capabilities=["fetch_status", "query_logs"],
-    allowed_tools=["get_robot_status", "query_logs"],
-    context=context,
-    event_bus=event_bus,
-    mcp_client=mcp_client
-)
-```
-
-### Coordinator
-
-Routes user queries to appropriate agents:
-
-```python
-coordinator = Coordinator(
-    agent_registry=registry,
-    context=context,
-    event_bus=event_bus,
-    routing_config={"examples": [...]}
-)
-
-result = coordinator.execute_workflow("What errors occurred in the last hour?")
-```
-
-### Shared Context
-
-Token-efficient information passing:
-
-```python
-# Agent 1 writes
-context.write("machine_a.status", status_data, summary="Machine is running normally")
-
-# Agent 2 reads
-status = context.read("machine_a.status")
-```
+Reload the web interface - your machine now appears in the dropdown!
 
 ## Project Structure
 
 ```
-multi_agent_framework/
-├── core/
-│   ├── agent.py           # Base agent class
-│   ├── coordinator.py     # Task routing and orchestration
-│   ├── context.py         # Shared memory
-│   ├── events.py          # Event system
-│   └── mcp_client.py      # MCP tool integration
-├── agents/
-│   ├── specialized_agent.py  # Specialized agent implementation
-│   └── registry.py           # Agent discovery and management
-├── config/
-│   ├── agent_config.py       # Pydantic schemas
-│   └── config_loader.py      # YAML loader
-└── examples/
-    ├── spar_lamination_config.yaml
-    └── demo.py
+Multi-Agent-Framework/
+├── backend/              # FastAPI server
+│   ├── app/             # API endpoints
+│   └── configs/         # Machine configurations
+├── frontend/            # React web interface
+├── multi_agent_framework/  # Core framework
+│   ├── agents/          # Agent implementations
+│   ├── core/            # Coordinator, context, LLM providers
+│   └── config/          # Configuration schemas
+├── tools/               # Utilities
+│   └── rag_ingestion/   # Document ingestion for RAG
+├── docs/                # Example documentation
+└── documentation/       # Setup guides
 ```
 
-## Persona-Specific Deployments
+## Documentation
 
-This framework is designed to create **separate deployments** for different personas:
+| Guide | Description |
+|-------|-------------|
+| [LLM Setup Guide](documentation/LLM_SETUP_GUIDE.md) | Configure OpenAI/Gov.cloud LLMs |
+| [RAG Ingestion Guide](documentation/RAG_INGESTION_GUIDE.md) | Add documentation to machines |
+| [Usage Breakdown](documentation/Usage-Breakdown.md) | How configurations work |
+| [Phase 2 Guide](documentation/PHASE2_GUIDE.md) | Advanced features |
 
-1. **Equipment Engineer for Spar Lamination Machine**
-   - Agents: Data Fetcher, Analyzer, Summarizer (all for spar lamination)
-   - Tools: Machine status, process data, error logs
-   
-2. **Quality Engineer for Spar Lamination Machine**
-   - Agents: Quality Data Fetcher, Quality Analyzer, Report Generator
-   - Tools: Quality metrics, defect tracking, compliance data
+## Use Cases
 
-Each deployment is a separate instance with its own `config.yaml`.
+### Equipment Engineer
+"What's the current status of the spar lamination machine?"
 
-## Routing Strategies
+### Quality Control
+"Any errors in the last hour on Robot A?"
 
-### Keyword-Based (Default)
+### Maintenance
+"Show me the troubleshooting procedure for error code E01"
 
-```yaml
-routing_examples:
-  - keywords: ["status", "current state"]
-    machine_id: "spar_lamination_machine"
+### Production Manager
+"What's the efficiency of the conveyor belt today?"
+
+## Architecture
+
+```
+User → Web Interface → Backend API → Multi-Agent Framework
+                                           ↓
+                              ┌────────────┴────────────┐
+                              ↓                         ↓
+                        LLM Provider              MCP Tools
+                         (OpenAI)          (SQL, HighByte, ChromaDB)
 ```
 
-### LLM-Based (Future)
+## Requirements
 
-The coordinator can use an LLM to intelligently route queries by calling an MCP tool with routing examples.
+- Python 3.13+
+- Node.js 18+ (for web interface)
+- OpenAI API key (or compatible endpoint)
+- Optional: SQL Server, HighByte, Teradata for production data
 
-## Development Roadmap
+## Installation
 
-### Phase 1 (Current)
-- ✅ Core framework with sequential execution
-- ✅ Specialized agents with machine + function expertise
-- ✅ Event-driven communication
-- ✅ Keyword-based routing
-- ⏳ MCP client integration (mock implementation)
+```bash
+# Clone repository
+git clone <repo-url>
+cd Multi-Agent-Framework
 
-### Phase 2 (Future)
-- ⬜ Async/await execution for parallel agents
-- ⬜ Retry logic and error handling
-- ⬜ LLM-based intelligent routing
-- ⬜ Vector DB integration for semantic routing
-- ⬜ Monitoring and performance metrics
-- ⬜ Real MCP SDK integration
+# Create virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Install framework
+pip install -e .
+pip install -r requirements.txt
+
+# Set up environment variables
+cp .env.example .env
+# Edit .env and add your API keys
+```
+
+## Configuration
+
+Each machine gets its own YAML configuration defining:
+- Which LLM to use
+- Which agents are available
+- Which tools/data sources each agent can access
+- Custom instructions per agent
+
+**Complete isolation** - Machine 1 can't access Machine 2's tools or data.
+
+## Deployment
+
+### Docker (Production)
+
+```bash
+docker-compose up --build
+```
+
+Visit **http://localhost:3000**
+
+### Manual (Development)
+
+See [Quick Start](#quick-start) above.
+
+## Adding New Machines
+
+1. **Add documentation**: Place files in `docs/machine_name/`
+2. **Ingest to RAG**: `python tools/setup_rag_collection.py --machine machine_name --docs ./docs/machine_name/`
+3. **Create config**: Add `backend/configs/machine_name.yaml`
+4. **Refresh**: Machine appears in web interface automatically!
+
+No code changes needed - just configuration!
+
+## Key Technologies
+
+- **Backend**: FastAPI, Python 3.13
+- **Frontend**: React, Vite
+- **LLM**: OpenAI API (GPT-4, GPT-4o-mini)
+- **RAG**: ChromaDB with semantic chunking
+- **MCP**: Model Context Protocol for tool integration
+
+## Development
+
+```bash
+# Auto-formatting
+black multi_agent_framework/
+
+# Type checking
+mypy multi_agent_framework/
+
+# Run tests
+pytest
+```
 
 ## License
 
@@ -235,4 +218,12 @@ The coordinator can use an LLM to intelligently route queries by calling an MCP 
 
 ## Contributing
 
-[Add contribution guidelines here]
+[Add contribution guidelines]
+
+## Support
+
+For issues or questions, please open a GitHub issue.
+
+---
+
+**Built for manufacturing teams who need intelligent, conversational access to their equipment data.**
