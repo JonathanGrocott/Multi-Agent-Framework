@@ -9,6 +9,7 @@ This example demonstrates:
 """
 
 import sys
+import argparse
 from pathlib import Path
 
 # Add parent directory to path
@@ -161,17 +162,30 @@ def run_example_queries(coordinator: Coordinator):
 
 def main():
     """Main entry point."""
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description="Multi-Agent Orchestration Framework Demo")
+    parser.add_argument(
+        "--config",
+        type=str,
+        default="spar_lamination_config.yaml",
+        help="Path to configuration YAML file (default: spar_lamination_config.yaml)"
+    )
+    args = parser.parse_args()
+    
     print("="*70)
     print("MULTI-AGENT ORCHESTRATION FRAMEWORK - DEMO")
     print("="*70)
     print()
     
     # Get config path
-    config_path = Path(__file__).parent / "spar_lamination_config.yaml"
+    config_path = Path(__file__).parent / args.config
     
     if not config_path.exists():
         print(f"❌ Config file not found: {config_path}")
-        print("Please ensure spar_lamination_config.yaml exists in the examples directory.")
+        print("Please ensure the config file exists in the examples directory.")
+        print(f"\nAvailable configs:")
+        for cfg in Path(__file__).parent.glob("*.yaml"):
+            print(f"  - {cfg.name}")
         return 1
     
     try:
