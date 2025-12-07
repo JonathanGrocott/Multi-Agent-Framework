@@ -1,0 +1,19 @@
+# FastAPI Backend Dependencies
+
+# FastAPI and server
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+python-multipart>=0.0.6
+
+# CORS and middleware
+python-dotenv>=1.0.0
+
+# Pydantic for validation
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# Async support
+aiofiles>=23.2.1
+
+# Import the core framework (from parent directory)
+# Install in development mode: pip install -e ../

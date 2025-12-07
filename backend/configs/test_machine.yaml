@@ -1,0 +1,69 @@
+# Multi-Agent System Configuration - Simple Test with Mock Data
+# This config uses NO MCP servers, just LLM with mock tool responses
+
+# LLM Provider Configuration
+llm_providers:
+  openai_standard:
+    type: "openai"
+    api_key: "${OPENAI_API_KEY}"
+    default_model: "gpt-4o-mini"
+    timeout: 60
+    max_retries: 3
+
+# Default provider to use
+default_llm_provider: "openai_standard"
+
+# List of specialized agents (minimal config for testing)
+agents:
+  # Data Fetching Agent
+  - agent_id: "test_data_fetcher"
+    name: "Test Data Fetcher"
+    machine_id: "test_machine"
+    function: "data_fetching"
+    capabilities:
+      - "fetch_current_status"
+      - "retrieve_sensor_data"
+    mcp_tools: []  # No MCP tools - pure LLM reasoning
+    model: "gpt-4o-mini"
+    custom_instructions: "You are a data fetching agent. When asked about machine status, provide a detailed status report based on your knowledge."
+
+  # Analysis Agent
+  - agent_id: "test_analyzer"
+    name: "Test Analyzer"
+    machine_id: "test_machine"
+    function: "analysis"
+    capabilities:
+      - "analyze_performance"
+      - "identify_issues"
+    mcp_tools: []  # No MCP tools
+    model: "gpt-4o-mini"
+    custom_instructions: "You are an analysis agent. Analyze the data provided by other agents and identify patterns or issues."
+
+  # Summary Agent
+  - agent_id: "test_summarizer"
+    name: "Test Summarizer"
+    machine_id: "test_machine"
+    function: "summary"
+    capabilities:
+      - "create_reports"
+      - "generate_recommendations"
+    mcp_tools: []  # No MCP tools
+    model: "gpt-4o-mini"
+    custom_instructions: "You are a summarizer. Create clear, concise summaries and actionable recommendations."
+
+# Routing examples
+routing_examples:
+  - keywords:
+      - "test machine"
+      - "test"
+      - "status"
+      - "machine"
+    machine_id: "test_machine"
+    description: "Route all queries to test machine"
+
+# MCP Server configurations (empty - no servers needed for testing)
+mcp_servers: {}
+
+# History tracking (optional)
+history:
+  enabled: false
