@@ -2,34 +2,38 @@
  * API client for backend communication
  */
 
-const API_BASE = http://localhost:8000`;
+const API_BASE = `http://localhost:8000`;
 
-export interface Machine {
-    id: string;
-    name: string;
-    description?: string;
-    capabilities: string[];
-    agent_count: number;
-}
+/**
+ * @typedef {Object} Machine
+ * @property {string} id
+ * @property {string} name
+ * @property {string} [description]
+ * @property {string[]} capabilities
+ * @property {number} agent_count
+ */
 
-export interface ChatMessage {
-    role: 'user' | 'assistant';
-    content: string;
-    timestamp?: Date;
-}
+/**
+ * @typedef {Object} ChatMessage
+ * @property {'user'|'assistant'} role
+ * @property {string} content
+ * @property {Date} [timestamp]
+ */
 
-export interface ChatResponse {
-    response: string;
-    agent_count: number;
-    execution_time_ms: number;
-    machine_id: string;
-    timestamp: string;
-}
+/**
+ * @typedef {Object} ChatResponse
+ * @property {string} response
+ * @property {number} agent_count
+ * @property {number} execution_time_ms
+ * @property {string} machine_id
+ * @property {string} timestamp
+ */
 
 /**
  * Fetch list of available machines
+ * @returns {Promise<Machine[]>}
  */
-export async function fetchMachines(): Promise<Machine[]> {
+export async function fetchMachines() {
     const response = await fetch(`${API_BASE}/api/machines`);
     if (!response.ok) {
         throw new Error('Failed to fetch machines');
@@ -40,11 +44,14 @@ export async function fetchMachines(): Promise<Machine[]> {
 
 /**
  * Send a chat message to a machine
+ * @param {string} machineId
+ * @param {string} message
+ * @returns {Promise<ChatResponse>}
  */
 export async function sendChatMessage(
-    machineId: string,
-    message: string
-): Promise<ChatResponse> {
+    machineId,
+    message
+) {
     const response = await fetch(`${API_BASE}/api/chat`, {
         method: 'POST',
         headers: {
